@@ -1,0 +1,6 @@
+.env
+.venv/
+venv/
+designdoc.md
+phases.md
+__pycache__

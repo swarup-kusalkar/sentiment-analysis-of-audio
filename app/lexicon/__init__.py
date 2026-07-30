@@ -1,0 +1,1 @@
+"""Abuse and profanity lexicon."""

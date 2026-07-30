@@ -1,0 +1,1 @@
+"""Tests for the VAD module (Phase 2)."""

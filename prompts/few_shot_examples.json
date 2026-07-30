@@ -1,0 +1,118 @@
+[
+  {
+    "description": "Neutral / calm customer service interaction",
+    "input_transcript": "Thank you for calling. How can I help you today?",
+    "expected_output": {
+      "transcript": "Thank you for calling. How can I help you today?",
+      "emotion": {
+        "primary": "neutral",
+        "secondary": [],
+        "reasoning": "Even pitch and steady delivery with no strong emotional signals — typical professional greeting."
+      },
+      "tone": {
+        "label": "calm",
+        "reasoning": "Even, unhurried cadence with no tension in voice."
+      },
+      "abuse": {
+        "flagged": false,
+        "category": "none",
+        "severity_1_to_5": 0,
+        "evidence_span": null,
+        "reasoning": "No profanity, threats, or abusive language detected."
+      },
+      "energy_loudness": {
+        "level": "normal",
+        "description": "Even, conversational volume throughout.",
+        "dsp_agrees": true
+      },
+      "summary": "The speaker is a customer service agent opening the call with a polite and calm greeting."
+    }
+  },
+  {
+    "description": "Angry / frustrated customer complaint",
+    "input_transcript": "I have been on hold for thirty minutes. This is absolutely unacceptable. I want a manager, now.",
+    "expected_output": {
+      "transcript": "I have been on hold for thirty minutes. This is absolutely unacceptable. I want a manager, now.",
+      "emotion": {
+        "primary": "angry",
+        "secondary": ["frustrated"],
+        "reasoning": "Escalating cadence, sharp enunciation on keywords like 'unacceptable' and 'now'—sounds like controlled fury."
+      },
+      "tone": {
+        "label": "aggressive",
+        "reasoning": "Direct, demanding language with rising intensity; no hedges or politeness markers."
+      },
+      "abuse": {
+        "flagged": false,
+        "category": "none",
+        "severity_1_to_5": 0,
+        "evidence_span": null,
+        "reasoning": "The speaker is angry but uses no profanity, threats, or personal attacks."
+      },
+      "energy_loudness": {
+        "level": "loud",
+        "description": "Speaker raises their voice sharply at the end of the segment, consistent with frustration rather than excitement.",
+        "dsp_agrees": true
+      },
+      "summary": "The speaker is a customer who has been waiting on hold for too long and is demanding to escalate to a manager; delivery is forceful but not abusive."
+    }
+  },
+  {
+    "description": "Abusive / profanity-laden customer complaint",
+    "input_transcript": "You stupid idiot, I'll find out where you live and you'll regret this. F*** you.",
+    "expected_output": {
+      "transcript": "You stupid idiot. I'll find out where you live and you will regret this. F*** you.",
+      "emotion": {
+        "primary": "angry",
+        "secondary": ["disgusted"],
+        "reasoning": "High volume, strained voice quality, strong enunciation on insult terms — extreme agitation."
+      },
+      "tone": {
+        "label": "aggressive",
+        "reasoning": "Direct personal insult followed by threat; deliberately intimidating delivery."
+      },
+      "abuse": {
+        "flagged": true,
+        "category": "threat",
+        "severity_1_to_5": 4,
+        "evidence_span": "I'll find out where you live and you will regret this.",
+        "reasoning": "Contains explicit personal threat toward the listener, personal insult, and profanity."
+      },
+      "energy_loudness": {
+        "level": "shouting",
+        "description": "Voice is raised and strained throughout, consistent with fury and intimidation.",
+        "dsp_agrees": true
+      },
+      "summary": "The speaker delivers a profanity-laced threat against the listener, shouting throughout in an escalating rage."
+    }
+  },
+  {
+    "description": "Sarcastic / tone-mismatch complaint",
+    "input_transcript": "Oh yeah, great job. This is just wonderful. I'm so happy right now.",
+    "expected_output": {
+      "transcript": "Oh yeah, great job. This is just wonderful. I'm so happy right now.",
+      "emotion": {
+        "primary": "angry",
+        "secondary": ["disgusted"],
+        "reasoning": "Though words are positive on the surface, vocal delivery carries strong sarcasm and frustration; stressed syllables fall unnaturally on positive words."
+      },
+      "tone": {
+        "label": "sarcastic",
+        "reasoning": "Tone directly contradicts the literal meaning of the words; delivery is mocking, not affirmative."
+      },
+      "abuse": {
+        "flagged": false,
+        "category": "none",
+        "severity_1_to_5": 0,
+        "evidence_span": null,
+        "reasoning": "No profanity, threats, or personal attacks — the sarcasm is aggressive but not abusive."
+      },
+      "energy_loudness": {
+        "level": "normal",
+        "description": "Volume is steady but tone conveys strong displeasure through prosodic emphasis on positive terms.",
+        "dsp_agrees": true
+      },
+      "summary": "The speaker is using sarcasm to express frustration; while the words are superficially positive, delivery makes it clear they are angry."
+    }
+  }
+]
