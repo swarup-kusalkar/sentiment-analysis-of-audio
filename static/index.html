@@ -8,17 +8,108 @@
 </head>
 <body>
     <div id="app">
-        <header>
-            <h1>Call Analysis</h1>
-            <p>Upload a call recording to analyse sentiment, tone, and paralinguistic features per speaker.</p>
+        <header class="page-header">
+            <h1>🎙️ Call Analysis Results</h1>
+            <div class="header-actions">
+                <button id="export-json" class="btn-secondary" disabled title="Export full analysis as JSON">
+                    📥 Export JSON
+                </button>
+            </div>
         </header>
-        <section id="upload-area">
-            <input type="file" id="file-input" accept="audio/*">
-            <div id="drop-zone">Drop audio file here or click to browse</div>
-            <div id="status"></div>
+
+        <section id="upload-section" class="upload-section">
+            <input type="file" id="file-input" accept="audio/*" hidden>
+            <div id="drop-zone" class="drop-zone">
+                <div class="drop-icon">🎵</div>
+                <p class="drop-text">Drop audio file here or click to browse</p>
+                <p class="drop-hint">Supported: WAV, MP3, M4A, OGG, FLAC (max 50 MB)</p>
+            </div>
+            <div id="upload-status" class="upload-status"></div>
+            <div id="progress-bar" class="progress-bar" hidden>
+                <div class="progress-fill"></div>
+                <span class="progress-text">Analyzing...</span>
+            </div>
         </section>
-        <section id="results"></section>
+
+        <section id="results-section" class="results-section" hidden>
+            <header class="results-header">
+                <div class="file-meta">
+                    <span class="file-name" id="result-file-name"></span>
+                    <span class="file-duration" id="result-duration"></span>
+                    <span class="speaker-count" id="result-speaker-count"></span>
+                </div>
+                <div class="overall-confidence">
+                    <span class="confidence-label">Overall confidence:</span>
+                    <span class="confidence-value" id="overall-confidence"></span>
+                    <span id="review-badge" class="review-badge" hidden>⚠ Needs human review</span>
+                </div>
+            </header>
+
+            <div id="speakers-container" class="speakers-container"></div>
+        </section>
+
+        <section id="empty-state" class="empty-state" hidden>
+            <p>Upload an audio file to begin analysis</p>
+        </section>
     </div>
+
+    <template id="speaker-card-template">
+        <article class="speaker-card">
+            <header class="card-header">
+                <div class="speaker-title">
+                    <span class="speaker-id" data-speaker-id></span>
+                    <span class="time-range" data-time-range></span>
+                </div>
+                <div class="card-meta">
+                    <span class="confidence" data-confidence></span>
+                    <span class="review-badge" data-review hidden>⚠ Review needed</span>
+                    <button class="btn-play" data-play hidden title="Play segment">▶ Play segment</button>
+                </div>
+            </header>
+            <div class="card-body">
+                <div class="card-row">
+                    <section class="card-field transcript-field">
+                        <h3>📝 Transcript</h3>
+                        <div class="field-content transcript" data-transcript></div>
+                    </section>
+                    <section class="card-field energy-field">
+                        <h3>⚡ Energy / Loudness</h3>
+                        <div class="field-content energy" data-energy>
+                            <span class="energy-level" data-energy-level></span>
+                            <span class="dsp-disagree" data-dsp-disagree hidden>⚠</span>
+                            <p class="energy-description" data-energy-description></p>
+                        </div>
+                    </section>
+                </div>
+                <div class="card-row">
+                    <section class="card-field emotion-field">
+                        <h3>😡 Emotion</h3>
+                        <div class="field-content emotion" data-emotion>
+                            <div class="emotion-primary" data-emotion-primary></div>
+                            <div class="emotion-secondary" data-emotion-secondary></div>
+                            <p class="emotion-reasoning" data-emotion-reasoning></p>
+                        </div>
+                    </section>
+                    <section class="card-field tone-field">
+                        <h3>🎭 Tone</h3>
+                        <div class="field-content tone" data-tone>
+                            <span class="tone-label" data-tone-label></span>
+                            <p class="tone-reasoning" data-tone-reasoning></p>
+                        </div>
+                    </section>
+                </div>
+                <section class="card-field abuse-field" data-abuse>
+                    <h3>🚨 Abuse</h3>
+                    <div class="field-content abuse" data-abuse-content></div>
+                </section>
+                <section class="card-field summary-field">
+                    <h3>📋 Summary</h3>
+                    <div class="field-content summary" data-summary></div>
+                </section>
+            </div>
+        </article>
+    </template>
+
     <script src="app.js"></script>
 </body>
 </html>
