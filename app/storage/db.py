@@ -44,9 +44,13 @@ async def init_db() -> None:
                     needs_human_review BOOLEAN,
                     result_json JSONB NOT NULL,
                     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                );
-                CREATE INDEX IF NOT EXISTS idx_analyses_audio_hash ON analyses(audio_hash);
-                CREATE INDEX IF NOT EXISTS idx_analyses_created_at ON analyses(created_at DESC);
+                )
+            """))
+            await conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_analyses_audio_hash ON analyses(audio_hash)
+            """))
+            await conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_analyses_created_at ON analyses(created_at DESC)
             """))
         logger.info("Database initialized")
 

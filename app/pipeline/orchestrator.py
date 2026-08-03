@@ -5,15 +5,12 @@ Wires Phases 1–7 together and returns final per-speaker results.
 
 import asyncio
 import logging
-import os
-from typing import Optional
 
-from app.config import settings
-from app.pipeline.ingest import AudioFile, ingest
+from app.pipeline.ingest import AudioFile
 from app.pipeline.vad import vad, VADResult
-from app.pipeline.diarization import diarize, DiarizationSegment
+from app.pipeline.diarization import diarize
 from app.pipeline.chunker import chunk, ChunkInfo
-from app.pipeline.dsp import analyse_chunk as dsp_analyse_chunk, DSPResult
+from app.pipeline.dsp import analyse_chunk as dsp_analyse_chunk
 from app.pipeline.llm import analyse_chunk as llm_analyse_chunk, LLMError
 from app.pipeline.guardrail import guardrail
 from app.schemas.output import (
@@ -98,7 +95,7 @@ async def process_audio(audio: AudioFile) -> AnalysisResponse:
                 dsp_result = dsp_analyse_chunk(ci.wav_path)
 
                 # LLM
-                llm_result = await llm_analyse_chunk(
+                llm_result = llm_analyse_chunk(
                     wav_path=ci.wav_path,
                     speaker_id=ci.speaker_id,
                     start_s=ci.start_s,
