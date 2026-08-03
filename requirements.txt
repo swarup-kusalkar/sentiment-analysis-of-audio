@@ -1,43 +1,22 @@
-# --- Web Framework ---
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
-
-# --- Config ---
 pydantic>=2.0
 pydantic-settings>=2.0
-python-dotenv>=1.0
-
-# --- Audio Processing ---
 librosa>=0.10.0
 soundfile>=0.12.0
-pydub>=0.25.0
-ffmpeg-python>=0.2.0
-
-# --- DSP (F0/pitch — internal only) ---
 praat-parselmouth>=0.4.0
-
-# --- Diarization ---
-pyannote.audio>=3.1.0
-torch>=2.0.0
-
-# --- VAD ---
+pyannote.audio==3.3.2
+torch==2.8.0
+torchaudio==2.8.0
 silero-vad>=5.0
-
-# --- LLM API ---
 openai>=1.0
-
-# --- Database ---
 sqlalchemy[asyncio]>=2.0
 asyncpg>=0.29.0
-
-# --- Caching ---
 redis>=5.0
-
-# --- Profanity Check ---
 better-profanity>=0.7.0
-
-# --- Async + Utilities ---
 aiofiles>=23.0
 tenacity>=8.0
 python-multipart>=0.0.9
-orjson>=3.0
+speechbrain>=1.0.0
+k2>=1.23.4
+huggingface-hub==0.23.0

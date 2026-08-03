@@ -1,9 +1,17 @@
+import os
+from pathlib import Path
+
+os.environ.setdefault("TORCHAUDIO_USE_SOUNDFILE", "1")
+os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes.health import router as health_router
 from app.api.routes.analysis import router as analysis_router
+
+STATIC_DIR = Path(__file__).parent.parent / "static"
 
 app = FastAPI(
     title="Audio Sentiment & Paralinguistic Analysis",
@@ -22,4 +30,4 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(analysis_router)
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

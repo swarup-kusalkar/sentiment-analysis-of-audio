@@ -8,6 +8,7 @@
 import logging
 
 import numpy as np
+import parselmouth
 
 from app.config import settings
 from app.schemas.internal import DSPResult
@@ -34,14 +35,8 @@ def _compute_rms_dbfs(y: np.ndarray) -> float:
 
 def _compute_f0_variance(wav_path: str) -> tuple[float | None, bool]:
     try:
-        import parselmouth
-
         snd = parselmouth.Sound(wav_path)
-        pitch = snd.to_pitch(
-            time_step=0.01,
-            pitch_floor=75.0,
-            pitch_ceiling=600.0,
-        )
+        pitch = snd.to_pitch(time_step=0.01, pitch_floor=75.0, pitch_ceiling=600.0)
         values = pitch.selected_array["frequency"]
         values = values[values > 0]
 
@@ -50,28 +45,8 @@ def _compute_f0_variance(wav_path: str) -> tuple[float | None, bool]:
 
         norm_var = float(np.var(values) / (np.mean(values) + 1e-9))
         return round(norm_var, 4), norm_var > 0.15
-
-    except Exception:
-        pass
-
-    try:
-        import librosa
-
-        y, sr = librosa.load(wav_path, sr=16000, mono=True)
-        f0, _, _ = librosa.pyin(
-            y,
-            fmin=librosa.note_to_hz("C2"),
-            fmax=librosa.note_to_hz("C7"),
-            fill_na=0.0,
-        )
-        f0 = f0[f0 > 0]
-        if len(f0) < 3:
-            return None, False
-
-        norm_var = float(np.var(f0) / (np.mean(f0) + 1e-9))
-        return round(norm_var, 4), norm_var > 0.15
-
-    except Exception:
+    except Exception as exc:
+        logger.warning("F0 variance computation failed: %s", exc)
         return None, False
 
 
@@ -91,14 +66,7 @@ def analyse_chunk(wav_path: str) -> DSPResult:
 
     rms_dbfs = _compute_rms_dbfs(y)
     bucket = _rms_to_loudness_bucket(rms_dbfs)
-
-    f0_var: float | None = None
-    high_arousal = False
-
-    result = _compute_f0_variance(wav_path)
-    if result[0] is not None:
-        f0_var = result[0]
-        high_arousal = result[1]
+    f0_var, high_arousal = _compute_f0_variance(wav_path)
 
     logger.info(
         "DSP: %.1f dBFS → %s | arousal=%s",

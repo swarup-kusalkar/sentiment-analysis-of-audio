@@ -10,42 +10,49 @@
 import base64
 import json
 import logging
+import re
 from pathlib import Path
 
 from openai import OpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.config import settings
 from app.schemas.output import SpeakerResult
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT_PATH = Path(__file__).resolve().parent.parent.parent / "prompts" / "system_prompt.txt"
-_FEW_SHOT_PATH = Path(__file__).resolve().parent.parent.parent / "prompts" / "few_shot_examples.json"
+_VALID_LOUDNESS = {"whisper", "quiet", "normal", "loud", "shouting"}
+_PROMPT_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
+_client: OpenAI | None = None
 
 
 class LLMError(Exception):
-    """Raised when the LLM call fails permanently after retries."""
+    pass
+
+
+def _get_client() -> OpenAI:
+    global _client
+    if _client is None:
+        _client = OpenAI(
+            base_url=settings.nvidia_base_url,
+            api_key=settings.nvidia_api_key,
+            timeout=settings.llm_timeout_seconds,
+        )
+    return _client
 
 
 def _load_prompts() -> tuple[str, list[dict]]:
-    system_prompt = _SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip()
-    few_shot = json.loads(_FEW_SHOT_PATH.read_text(encoding="utf-8"))
+    system_prompt = (_PROMPT_DIR / "system_prompt.txt").read_text(encoding="utf-8").strip()
+    few_shot = json.loads((_PROMPT_DIR / "few_shot_examples.json").read_text(encoding="utf-8"))
     return system_prompt, few_shot
 
 
-def _wav_to_data_uri(wav_path: str) -> str:
-    raw = Path(wav_path).read_bytes()
-    b64 = base64.b64encode(raw).decode("ascii")
-    return f"data:audio/wav;base64,{b64}"
+def _wav_to_base64(wav_path: str) -> str:
+    return base64.b64encode(Path(wav_path).read_bytes()).decode("ascii")
 
 
-def _build_messages(
-    system_prompt: str,
-    few_shot_examples: list[dict],
-) -> list[dict]:
+def _build_messages(system_prompt: str, few_shot_examples: list[dict]) -> list[dict]:
     messages = [{"role": "system", "content": system_prompt}]
-
     for example in few_shot_examples:
         transcript = example["input_transcript"]
         output = example["expected_output"]
@@ -53,15 +60,13 @@ def _build_messages(
             "role": "user",
             "content": (
                 f"Analyse this speaker's audio. The transcript is provided as context: "
-                f"\"{transcript}\"\n\n"
-                f"Return the analysis as a JSON object matching the schema."
+                f"\"{transcript}\"\n\nReturn the analysis as a JSON object matching the schema."
             ),
         })
         messages.append({
             "role": "assistant",
             "content": json.dumps(output, ensure_ascii=False),
         })
-
     return messages
 
 
@@ -71,21 +76,24 @@ def _extract_json(text: str) -> str:
         lines = text.split("\n")
         if lines[0].startswith("```"):
             lines = lines[1:]
-        if lines[-1].strip() == "```":
+        if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
         text = "\n".join(lines)
-
     try:
         json.loads(text)
         return text
     except json.JSONDecodeError:
         pass
-
-    import re
     m = re.search(r"\{.*", text, re.DOTALL)
-    if m:
-        return m.group(0)
-    return text
+    return m.group(0) if m else text
+
+
+def _normalize_loudness(level: str) -> str:
+    level_lower = level.strip().lower()
+    for valid in _VALID_LOUDNESS:
+        if valid in level_lower:
+            return valid
+    return "normal"
 
 
 def _validate_to_schema(raw_json: str, speaker_id: str, start_s: float, end_s: float) -> SpeakerResult:
@@ -96,7 +104,9 @@ def _validate_to_schema(raw_json: str, speaker_id: str, start_s: float, end_s: f
 
     emo = data.setdefault("emotion", {})
     emo.setdefault("primary", "unknown")
-    emo.setdefault("secondary", [])
+    secondary = emo.setdefault("secondary", [])
+    if not isinstance(secondary, list):
+        emo["secondary"] = [secondary] if secondary else []
     emo.setdefault("reasoning", "")
 
     tone = data.setdefault("tone", {})
@@ -111,7 +121,8 @@ def _validate_to_schema(raw_json: str, speaker_id: str, start_s: float, end_s: f
     abuse.setdefault("reasoning", "")
 
     energy = data.setdefault("energy_loudness", {})
-    energy.setdefault("level", "normal")
+    raw_level = energy.setdefault("level", "normal")
+    energy["level"] = _normalize_loudness(raw_level)
     energy.setdefault("description", "")
     energy.setdefault("dsp_agrees", True)
 
@@ -129,22 +140,14 @@ def _validate_to_schema(raw_json: str, speaker_id: str, start_s: float, end_s: f
     reraise=True,
 )
 def _call_api(messages: list[dict]) -> str:
-    client = OpenAI(
-        base_url=settings.nvidia_base_url + "/v1",
-        api_key=settings.nvidia_api_key,
-        timeout=settings.llm_timeout_seconds,
-    )
-
-    response = client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=settings.nvidia_model,
         messages=messages,
         temperature=settings.llm_temperature,
         top_p=1,
         max_tokens=4096,
         stream=False,
-        extra_body={
-            "reasoning_budget": settings.llm_reasoning_budget,
-        },
+        extra_body={"reasoning_budget": settings.llm_reasoning_budget},
     )
 
     content = response.choices[0].message.content
@@ -153,26 +156,16 @@ def _call_api(messages: list[dict]) -> str:
 
     tokens = response.usage.total_tokens
     reasoning_used = getattr(response.usage, "reasoning_tokens", 0)
-    logger.info(
-        "LLM call: %s total tokens (%s reasoning tokens)",
-        tokens,
-        reasoning_used or "N/A",
-    )
+    logger.info("LLM call: %s total tokens (%s reasoning tokens)", tokens, reasoning_used or "N/A")
 
     return content.strip()
 
 
-def analyse_chunk(
-    wav_path: str,
-    speaker_id: str,
-    start_s: float,
-    end_s: float,
-) -> SpeakerResult:
-    audio_uri = _wav_to_data_uri(wav_path)
+def analyse_chunk(wav_path: str, speaker_id: str, start_s: float, end_s: float) -> SpeakerResult:
+    audio_b64 = _wav_to_base64(wav_path)
     system_prompt, few_shot = _load_prompts()
     messages = _build_messages(system_prompt, few_shot)
 
-    # Build the final user message with audio and schema instruction
     schema_instruction = (
         "Analyse the attached audio and return ONLY a JSON object with these fields:\n"
         "transcript, emotion (primary, secondary, reasoning), tone (label, reasoning),\n"
@@ -185,10 +178,7 @@ def analyse_chunk(
         "role": "user",
         "content": [
             {"type": "text", "text": schema_instruction},
-            {
-                "type": "input_audio",
-                "input_audio": {"data": audio_uri},
-            },
+            {"type": "audio_url", "audio_url": {"url": f"data:audio/wav;base64,{audio_b64}"}},
         ],
     })
 
@@ -208,7 +198,7 @@ def analyse_chunk(
         raise LLMError(f"Decoding failed: {exc}")
 
     logger.info(
-        "Chunk %s analysed: emotion=%s, approved=%s",
+        "Chunk %s analysed: emotion=%s, abuse=%s",
         speaker_id,
         result.emotion.primary,
         result.abuse.flagged,
